@@ -83,10 +83,6 @@ Opening this link in a browser will display the `Subscription Page`, confirming 
 
 <img src={require('./images/28.webp').default} width="100%" style={{borderRadius: '8px'}} alt="Subscription page" />
 
-:::tip
-You can customize the Subscription Page, as explained in one of the installation [articles](/docs/install/subscription-page/customization).
-:::
-
 ## Verifying the Setup {#remark-four}
 
 We’ve created a user and obtained their subscription URL. Now, let’s test it by importing the subscription into a client application.
@@ -107,6 +103,6 @@ As promised, you can now view updated statistics on the Panel’s Home page and 
 
 ```mdx-code-block
 <DocCard
-  item={{ type: 'link', label: 'Config Profiles', description: 'Define how Nodes behave by creating Config Profiles.', href: '/docs/learn-en/config-profiles' }}
+  item={{ type: 'link', label: 'Config Profiles', description: 'Define how Nodes behave by creating Config Profiles.', href: '/learn-en/config-profiles' }}
 />
 ```

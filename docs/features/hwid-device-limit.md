@@ -60,13 +60,18 @@ Not all client applications send a HWID header. Here is the list of applications
 - [Happ](https://happ.su)
 - [v2RayTun](https://docs.v2raytun.com/overview/supported-headers)
 - Forks by Remnawave community:
-    - [Koala Clash](https://github.com/coolcoala/clash-verge-rev-lite) (Clash Verge Rev fork)
-    - [FlClashX](https://github.com/pluralplay/FlClashX) (FlClash fork)
-    - [Prizrak-Box](https://github.com/legiz-ru/Prizrak-Box) (Pandora-Box fork)
+  - [Koala Clash](https://github.com/coolcoala/clash-verge-rev-lite) (Clash Verge Rev fork)
+  - [FlClashX](https://github.com/pluralplay/FlClashX) (FlClash fork)
+  - [Prizrak-Box](https://github.com/legiz-ru/Prizrak-Box) (Pandora-Box fork)
 - [Throne](https://github.com/throneproj/Throne/) - HWID [disabled by default](https://github.com/throneproj/Throne/pull/789)
 - [Shadowrocket](https://apps.apple.com/ru/app/shadowrocket/id932747118?l=en-GB) - HWID disabled by default
 - [Clash Mi](https://clashmi.app/) - HWID disabled by default
 - [Passwall-OpenWRT](https://github.com/Openwrt-Passwall/openwrt-passwall)
+- [Clash Mi](https://clashmi.app/) - HWID disabled by default
+- [Karing](https://karing.app/) - HWID disabled by default
+- [Incy](https://incy.cc/)
+- [RenoarX](https://github.com/RonnyFX/RenoarX)
+- [DeskBox](https://github.com/mihail-jdanov/DeskBox)
 
 ## For app developers
 
@@ -78,8 +83,20 @@ Remnawave is using these headers to identify the HWID and the device.
 
 To enable support for the HWID feature in your client, the application should send the following headers when the user is adding the subscription.
 
+### HWID Format
+
+:::warning
+Starting from Remnawave Panel **v3.0.0**, the incoming `x-hwid` header is
+validated against the regular expression `/^[a-zA-Z0-9=-]{10,64}$/`.
+
+In simple terms: the HWID must be 10 to 64 characters long and may only
+contain Latin letters, digits, `=` and `-`.
+
+If the HWID does not match, Remnawave ignores the header entirely.
+:::
+
 ```bash
-x-hwid: vfjdhk66csdjhk
+x-hwid: UE42LJXu4DbiCaBv
 x-device-os: iOS
 x-ver-os: 18.3
 x-device-model: Iphone 14 Pro Max
@@ -89,3 +106,20 @@ user-agent: <user_agent>
 The only required item is `x-hwid`. Other headers are optional and can be used to identify the device more accurately.
 
 If your application has the ability to enable additional features based on where the subscription is coming from, Remnawave can send a provider id in the response headers, which you can use to figure out where the subscription is coming from.
+
+### HWID Headers sent by Remnawave
+
+:::info
+Available since Remnawave Panel **v2.7.5**.
+:::
+
+When HWID Device Limit is enabled, Remnawave includes the following headers in subscription responses:
+
+| Header                       | Description                                                                                              |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `x-hwid-active`              | Always `true` when HWID Device Limit is enabled on the panel side.                                       |
+| `x-hwid-not-supported`       | `true` if HWID Device Limit is enabled, but the client application did not send an `x-hwid` header.      |
+| `x-hwid-max-devices-reached` | `true` if HWID Device Limit is enabled and the user has reached their maximum number of allowed devices. |
+| `x-hwid-limit`               | `true` when the device limit has been reached. Sent for backwards compatibility with v2RayTun.           |
+
+These headers allow client applications to provide meaningful feedback to users — for example, displaying a warning when the device limit has been reached or when HWID support is missing.

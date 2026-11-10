@@ -54,7 +54,8 @@ Properties:
     - `node` - Node events
     - `service` - Service events
     - `crm` - Infra Billing events
-    - `errors` - Errors events (reserved for future use)
+    - `torrent_blocker` - Torrent Blocker events
+    - `errors` - Errors events
 
 - `event` - The event that occurred.
 - `timestamp` - The timestamp of the webhook payload in ISO 8601 format.
@@ -71,7 +72,7 @@ Detailed payload schema for each scope is available in the OpenAPI documentation
 ## Scope: user
 
 OpenAPI Model: `RemnawaveWebhookUserEventsDto`  
-Model Link: https://docs.rw/api/#model/remnawavewebhookusereventsdto
+Model Link: https://docs.rw/api/#model/RemnawaveWebhookUserEventsDto
 
 Available events (`event` property):
 
@@ -84,13 +85,14 @@ Available events (`event` property):
 - `user.limited` - User limited
 - `user.expired` - User expired
 - `user.traffic_reset` - User traffic reset
-- `user.expires_in_72_hours` - User expires in 72 hours
-- `user.expires_in_48_hours` - User expires in 48 hours
-- `user.expires_in_24_hours` - User expires in 24 hours
-- `user.expired_24_hours_ago` - User expired 24 hours ago
+- ~~`user.expires_in_72_hours` - User expires in 72 hours _(removed in v.2.8.0, use `user.expiration` instead)_~~
+- ~~`user.expires_in_48_hours` - User expires in 48 hours _(removed in v.2.8.0, use `user.expiration` instead)_~~
+- ~~`user.expires_in_24_hours` - User expires in 24 hours _(removed in v.2.8.0, use `user.expiration` instead)_~~
+- ~~`user.expired_24_hours_ago` - User expired 24 hours ago _(removed in v.2.8.0, use `user.expiration` instead)_~~
 - `user.first_connected` - User first connected
 - `user.bandwidth_usage_threshold_reached` - User bandwidth usage threshold reached
-- `user.not_connected` - User not connected (Active only when `NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED` is true in .env.)
+- `user.not_connected` - User not connected (Active only when `NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED` is true in `.env`.)
+- `user.expiration` - User expiration notifications (Active only when `EXPIRATION_NOTIFICATIONS_ENABLED` is true in `.env`.)
 
 Remnawave Typescript SDK types:
 
@@ -101,10 +103,36 @@ import { TRemnawaveWebhookUserEvent, RemnawaveWebhookUserEvents } from '@remnawa
 - `RemnawaveWebhookUserEvents` – raw Zod schema
 - `TRemnawaveWebhookUserEvent` – inferred type from the schema
 
+### `meta` object
+
+Most user events carry `meta: null`. It is populated **only** for notification-style
+events, where it provides the context that triggered the webhook.
+
+| Field                    | Type             | Present for          | Description                                                                                                                       |
+| ------------------------ | ---------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `notConnectedAfterHours` | `number \| null` | `user.not_connected` | Hours the user has been offline. Matches the threshold from `NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS` that fired the event. |
+| `expiration`             | `number \| null` | `user.expiration`    | Signed offset in **hours** relative to the user's expiration (`expireAt`). Matches a value from `EXPIRATION_NOTIFICATIONS`.       |
+
+#### Sign of `expiration` field
+
+The `expiration` value is **signed** and encodes the direction relative to the
+expiration moment:
+
+- **Negative** — fired **before** expiration: _expires in `|N|` hours_
+  (e.g. `-72` → expires in 72 hours).
+- **Positive** — fired **after** expiration: _expired `N` hours ago_
+  (e.g. `24` → expired 24 hours ago).
+
+:::note
+For every event other than `user.not_connected` and `user.expiration`, `meta` is
+`null`. When `meta` is present, only the field for the current event is set — the
+other field stays `null`.
+:::
+
 ## Scope: user_hwid_devices
 
 OpenAPI Model: `RemnawaveWebhookUserHwidDevicesEventsDto​`  
-Model Link: https://docs.rw/api/#model/remnawavewebhookuserhwiddeviceseventsdto
+Model Link: https://docs.rw/api/#model/RemnawaveWebhookUserHwidDevicesEventsDto
 
 Available events (`event` property):
 
@@ -125,8 +153,8 @@ import {
 
 ## Scope: node
 
-OpenAPI Model: `RemnawaveWebhookServiceEventsDto​`  
-Model Link: https://docs.rw/api/#model/remnawavewebhookenodeeventsdto
+OpenAPI Model: `RemnawaveWebhookNodeEventsDto​`  
+Model Link: https://docs.rw/api/#model/RemnawaveWebhookNodeEventsDto
 
 Available events (`event` property):
 
@@ -151,13 +179,14 @@ import { TRemnawaveWebhookNodeEvent, RemnawaveWebhookNodeEvents } from '@remnawa
 ## Scope: service
 
 OpenAPI Model: `RemnawaveWebhookServiceEventsDto`  
-Model Link: https://docs.rw/api/#model/remnawavewebhookserviceeventsdto
+Model Link: https://docs.rw/api/#model/RemnawaveWebhookServiceEventsDto
 
 Available events (`event` property):
 
 - `service.panel_started` - Panel started
 - `service.login_attempt_failed` - Login attempt failed
 - `service.login_attempt_success` - Login attempt success
+- `service.subpage_config_changed` - Subpage config changed
 
 Remnawave Typescript SDK types:
 
@@ -174,7 +203,7 @@ import {
 ## Scope: crm
 
 OpenAPI Model: `RemnawaveWebhookCrmEventsDto`  
-Model Link: https://docs.rw/api/#model/remnawavewebhookcrmeventsdto
+Model Link: https://docs.rw/api/#model/RemnawaveWebhookCrmEventsDto
 
 Available events (`event` property):
 
@@ -195,16 +224,37 @@ import { TRemnawaveWebhookCrmEvent, RemnawaveWebhookCrmEvents } from '@remnawave
 - `RemnawaveWebhookCrmEvents` – raw Zod schema
 - `TRemnawaveWebhookCrmEvent` – inferred type from the schema
 
+## Scope: torrent_blocker
+
+From Remnawave Panel v2.7.0 and higher.
+
+OpenAPI Model: `RemnawaveWebhookTorrentBlockerEventsDto`
+Model Link: https://docs.rw/api/#model/RemnawaveWebhookTorrentBlockerEventsDto
+
+Available events (`event` property):
+
+- `torrent_blocker.report` - Torrent blocker report (includes node data, user data, action report with blocked status/IP/block duration, and xray report with protocol/network/source/destination details)
+
+Remnawave Typescript SDK types:
+
+```typescript
+import {
+    TRemnawaveWebhookTorrentBlockerEvent,
+    RemnawaveWebhookTorrentBlockerEvents
+} from '@remnawave/backend-contract'
+```
+
+- `RemnawaveWebhookTorrentBlockerEvents` – raw Zod schema
+- `TRemnawaveWebhookTorrentBlockerEvent` – inferred type from the schema
+
 ## Scope: errors
 
-OpenAPI Model: `RemnawaveWebhookErrorsEventsDto`  
-Model Link: https://docs.rw/api/#model/remnawavewebhookererroreventsdto
+OpenAPI Model: `RemnawaveWebhookErrorsEventsDto`
+Model Link: https://docs.rw/api/#model/RemnawaveWebhookErrorsEventsDto
 
-:::info
+Available events (`event` property):
 
-Reserved for future use.
-
-:::
+- `errors.bandwidth_usage_threshold_reached_max_notifications` - Bandwidth usage threshold reached max notifications
 
 ## Verify webhook
 
